@@ -16,12 +16,16 @@ module SerialCrack
       @done = false
 
       if @options[:prompt].nil?
-        conn.write "\n"
-        conn.read(256)
-        conn.write("\n") unless @options[:no_newline]
-        response = conn.read(256)
+        conn.write "\r" # Use an empty password input
+        unless @options[:no_newline]
+          sleep 0.5
+          conn.read(1024)
+          conn.write("\r")
+        end
+        sleep 0.75
+        response = conn.read(1024)
 
-        @options[:prompt] = response.split.reject(&:empty?).compact.last
+        @options[:prompt] = response.split("\n").reject(&:empty?).compact.last
         raise "No valid response on prompt estimation;\n#{response}" if @options[:prompt].nil?
 
         puts "Guessing prompt to be '#{@options[:prompt]}'"
@@ -29,8 +33,8 @@ module SerialCrack
     end
 
     def total
-      return :inf unless @backend.respond_to? :total
-      @backend.total
+      return :inf unless @backend.respond_to? :total?
+      @backend.total?
     end
 
     def done?
@@ -39,13 +43,17 @@ module SerialCrack
 
     def test!(password = current_password)
       return true if done?
-      conn.write password + "\n"
+      conn.write password + "\r"
 
-      response = conn.read(256)
+      unless @options[:no_newline]
+        sleep 0.3
+        conn.read(1024)
+        conn.write("\r")
+      end
+
+      sleep 0.6
+      response = conn.read(1024)
       @done = !response.include?(@options[:prompt])
-
-      conn.write("\n") unless @options[:no_newline]
-      conn.read(256)
 
       @done
     end

@@ -82,14 +82,15 @@ def run!
   raise ArgumentError, "Unknown serial device #{options[:serial]}" unless File.exist? options[:serial]
 
   crack = SerialCrack::Cracker.new options[:serial], options
-  return
 
   bar = ProgressBar.create(title: 'Progress', total: nil, format: 'Tested: %c/%u |%B|')
   bar.total = crack.total if crack.total != :inf
 
   until crack.done?
     return if crack.test!
-    crack.next!
+    bar.format = "Tested: %c/%u (#{crack.current_password}) |%B|"
+
+    crack.next_password!
     bar.increment
 
     sleep options[:delay] / 1000.0 if options[:delay]
@@ -98,8 +99,9 @@ def run!
   puts "Password cracked as '#{crack.current_password}'"
 rescue StandardError => e
   puts e
-  puts "Last tested password was '#{crack.current_password}'\n" if crack
   raise e
+ensure
+  puts "\nLast tested password was '#{crack.current_password}'\n" if crack
 end
 
 run! if $PROGRAM_NAME == __FILE__

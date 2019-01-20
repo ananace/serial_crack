@@ -1,7 +1,5 @@
 module SerialCrack::Backends
   class Range
-    attr_accessor :current
-
     def initialize(options = {})
       ranges = options[:range]
 
@@ -12,15 +10,36 @@ module SerialCrack::Backends
       @min_length = 0
       @max_length = 0
 
-      @current = options[:start] || @combined[0]
+      @current = [options[:start] || @combined[0]]
+    end
+
+    def current
+      @current.reverse.join
     end
 
     def next!
-      if current[current.size - 1] == @combined.last
+      if @current.first == @combined[@combined.size - 1]
         @cur_index = 0
-        current += @combined[0]
+
+        carry = true
+        @current.each do |char|
+          break unless carry
+
+          ind = @combined.index(char) + 1
+          if ind >= @combined.size
+            ind = 0
+          else
+            carry = false
+          end
+
+          char.replace(@combined[ind])
+        end
+
+        if carry
+          @current << @combined[0]
+        end
       else
-        current[current.size - 1] = @combined[@cur_index += 1]
+        @current.first.replace(@combined[@cur_index += 1])
       end
 
       current
