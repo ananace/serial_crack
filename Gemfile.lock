@@ -1,0 +1,28 @@
+PATH
+  remote: .
+  specs:
+    serial_crack (0.1.0)
+      progressbar (~> 1.10.0)
+      rubyserial (~> 0.6.0)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    ffi (1.10.0)
+    minitest (5.11.3)
+    progressbar (1.10.0)
+    rake (12.3.2)
+    rubyserial (0.6.0)
+      ffi (~> 1.9, >= 1.9.3)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  bundler
+  minitest
+  rake
+  serial_crack!
+
+BUNDLED WITH
+   1.16.1

@@ -1,0 +1,105 @@
+#!/usr/bin/env ruby
+
+require 'optparse'
+require 'progressbar'
+require 'serial_crack'
+
+def run!
+  options = {}
+  options[:serial] = '/dev/ttyS0'
+  options[:baud] = 9600
+  options[:data] = 8
+  options[:parity] = :none
+  options[:stop] = 1
+  options[:delay] = nil
+  options[:wordlist] = nil
+  options[:range] = nil
+  options[:prompt] = nil
+  options[:no_newline] = false
+
+  opts_parser = OptionParser.new do |opts|
+    opts.banner = "Usage: #{File.basename($0, File.extname($0))} [SERIAL]"
+
+    opts.on('-b', '--bitrate BAUD', 'choose the bitrate for communication') do |bitrate|
+      raise ArgumentError, 'Unable to parse as integer' unless /\A\d+\z/ =~ delay
+      options[:baud] = bitrate.to_i
+    end
+
+    opts.on('-d', '--data BITS', 'choose the data bits for communication') do |bits|
+      raise ArgumentError, 'Unable to parse as integer' unless /\A\d+\z/ =~ delay
+      options[:data] = bits.to_i
+    end
+
+    opts.on('-s', '--stop BITS', 'choose the stop bits for communication') do |bits|
+      raise ArgumentError, 'Unable to parse as integer' unless /\A\d+\z/ =~ delay
+      options[:data] = bits.to_i
+    end
+
+    opts.on('-D', '--delay MS', 'add a delay between tests') do |delay|
+      raise ArgumentError, 'Unable to parse as integer' unless /\A\d+\z/ =~ delay
+      options[:delay] = delay.to_i
+    end
+
+    opts.on('-w', '--wordlist FILE', 'use a wordlist from the given file') do |file|
+      raise ArgumentError, 'Given wordlist file does not exist' unless File.exist? file
+      options[:wordlist] = file
+    end
+
+    opts.on('-r', '--range RANGE', 'add a character range') do |range|
+      raise ArgumentError "Can't use ranges and word lists at the same time" unless options[:wordlist].nil?
+
+      if range.include? '..'
+        range_start, range_end = range.split('..')
+        range = (range_start..range_end)
+      else
+        range = [range]
+      end
+
+      (options[:range] ||= []) << range
+    end
+
+    opts.on('-S', '--start PASSWORD', 'start with the given password') do |start|
+      options[:start] = start
+    end
+
+    opts.on('-P', '--prompt PROMPT', 'specify the prompt to look for') do |prompt|
+      options[:prompt] = prompt
+    end
+
+    opts.on('-N', '--no-newline', 'skip the extra newline between password attempts') do
+      options[:no_newline] = true
+    end
+
+    opts.on('-h', '--help', 'help') do
+      puts opts_parser
+      exit
+    end
+  end
+
+  opts_parser.parse!
+  options[:serial] = ARGV[0] unless ARGV[0].nil?
+
+  raise ArgumentError, "Unknown serial device #{options[:serial]}" unless File.exist? options[:serial]
+
+  crack = SerialCrack::Cracker.new options[:serial], options
+  return
+
+  bar = ProgressBar.create(title: 'Progress', total: nil, format: 'Tested: %c/%u |%B|')
+  bar.total = crack.total if crack.total != :inf
+
+  until crack.done?
+    return if crack.test!
+    crack.next!
+    bar.increment
+
+    sleep options[:delay] / 1000.0 if options[:delay]
+  end
+
+  puts "Password cracked as '#{crack.current_password}'"
+rescue StandardError => e
+  puts e
+  puts "Last tested password was '#{crack.current_password}'\n" if crack
+  raise e
+end
+
+run! if $PROGRAM_NAME == __FILE__
